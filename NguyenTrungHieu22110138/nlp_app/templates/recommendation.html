@@ -1,0 +1,211 @@
+{% csrf_token %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng khuyến nghị - Nguyễn Trung Hiếu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <style>
+        .stContainer { border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; background: #f9fafb; }
+        .spinner { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <nav class="bg-blue-600 p-4 fixed w-full top-0 z-10 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="text-white text-xl font-bold">NLP App</a>
+            <div class="space-x-4">
+                <a href="/preprocessing/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Tiền xử lý</a>
+                <a href="/modeling/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Mô hình hóa</a>
+                <a href="/recommendation/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Recommendation System</a>
+                <a href="/chatbot/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Chatbot</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6 pt-24">
+        <h1 class="text-3xl font-bold text-center text-indigo-600 mb-8">Hệ thống khuyến nghị với Học máy</h1>
+        
+        <div x-data="{ activeTab: 'collab_user' }" class="bg-white rounded-lg shadow-lg p-6">
+            <!-- Tabs -->
+            <div class="flex border-b mb-6">
+                <button @click="activeTab = 'collab_user'" 
+                        :class="activeTab === 'collab_user' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-2 font-medium">Collaborative (User-based)</button>
+                <button @click="activeTab = 'collab_item'" 
+                        :class="activeTab === 'collab_item' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-2 font-medium">Collaborative (Item-based)</button>
+                <button @click="activeTab = 'content'" 
+                        :class="activeTab === 'content' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-2 font-medium">Content-based</button>
+                <button @click="activeTab = 'context'" 
+                        :class="activeTab === 'context' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-2 font-medium">Context-based</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div x-show="activeTab === 'collab_user'">
+                <h2 class="text-xl font-semibold mb-4">Collaborative Filtering (User-based - SVD)</h2>
+                <form id="collab_user_form" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">File CSV (user_id, item_id, rating)</label>
+                        <input type="file" name="csv_file" accept=".csv" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột User ID</label>
+                            <input type="text" name="user_col" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Item ID</label>
+                            <input type="text" name="item_col" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Rating</label>
+                            <input type="text" name="rating_col" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">User ID cần khuyến nghị</label>
+                        <input type="text" name="target_user" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <input type="hidden" name="method" value="user">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Khuyến nghị</button>
+                </form>
+                <div id="collab_user_result" class="mt-4"></div>
+            </div>
+
+            <div x-show="activeTab === 'collab_item'">
+                <h2 class="text-xl font-semibold mb-4">Collaborative Filtering (Item-based - SVD)</h2>
+                <form id="collab_item_form" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">File CSV (user_id, item_id, rating)</label>
+                        <input type="file" name="csv_file" accept=".csv" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột User ID</label>
+                            <input type="text" name="user_col" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Item ID</label>
+                            <input type="text" name="item_col" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Rating</label>
+                            <input type="text" name="rating_col" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Item ID cần khuyến nghị</label>
+                        <input type="text" name="target_user" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <input type="hidden" name="method" value="item">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Khuyến nghị</button>
+                </form>
+                <div id="collab_item_result" class="mt-4"></div>
+            </div>
+
+            <div x-show="activeTab === 'context'">
+                <h2 class="text-xl font-semibold mb-4">Context-based Filtering</h2>
+                <form id="context_form" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">File CSV (ví dụ: Amazon reviews)</label>
+                        <input type="file" name="csv_file" accept=".csv" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Item (ví dụ: asins)</label>
+                            <input type="text" name="item_col" value="asins" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Nội dung (ví dụ: reviews.text)</label>
+                            <input type="text" name="content_col" value="reviews.text" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cột Ngữ cảnh (ví dụ: reviews.date)</label>
+                            <input type="text" name="context_col" value="reviews.date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Item cần khuyến nghị (B00QJDU3KY hoặc B00NO8JJZW)</label>
+                            <input type="text" name="target_item" placeholder="B00QJDU3KY hoặc B00NO8JJZW" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Ngữ cảnh (weekday/weekend)</label>
+                            <select name="context_value" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value="weekday">weekday</option>
+                                <option value="weekend">weekend</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Khuyến nghị</button>
+                </form>
+                <div id="context_result" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(form);
+                const resultDiv = form.nextElementSibling;
+                resultDiv.innerHTML = '<p class="text-gray-600">Đang xử lý...</p>';
+
+                try {
+                    const response = await fetch(form.id.includes('collab') ? '/collaborative_filtering/' : 
+                                                form.id.includes('content') ? '/content_based_filtering/' : 
+                                                '/context_based_filtering/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        const text = await response.text();
+                        throw new Error(`Phản hồi không phải JSON: Status ${response.status}, Content: ${text.slice(0, 100)}...`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (form.id === 'context_form') {
+                            // Xử lý kết quả cho Context-based Filtering
+                            let html = `
+                                <h3 class="text-lg font-semibold text-green-600">Kết quả khuyến nghị:</h3>
+                                <p class="text-gray-800">Target Item: ${data.target_item} (${data.target_name})</p>
+                                <h4 class="text-md font-semibold mt-2">Danh sách khuyến nghị:</h4>
+                                <ul class="list-disc pl-5 mt-2">
+                                    ${data.recommendations.map(item => `<li class="text-gray-800">${item.asins}: ${item.name}</li>`).join('')}
+                                </ul>
+                            `;
+                            resultDiv.innerHTML = html;
+                        } else {
+                            // Xử lý kết quả cho Collaborative Filtering
+                            resultDiv.innerHTML = `
+                                <h3 class="text-lg font-semibold text-green-600">Kết quả khuyến nghị:</h3>
+                                <ul class="list-disc pl-5 mt-2">
+                                    ${data.recommendations.map(item => `<li class="text-gray-800">${item}</li>`).join('')}
+                                </ul>
+                            `;
+                        }
+                    } else {
+                        resultDiv.innerHTML = `<p class="text-red-600">Lỗi: ${data.error}</p>`;
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = `<p class="text-red-600">Lỗi: ${error.message}</p>`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

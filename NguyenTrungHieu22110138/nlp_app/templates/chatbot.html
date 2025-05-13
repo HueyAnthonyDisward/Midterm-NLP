@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot - Nguyễn Trung Hiếu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    <style>
+        .chat-container { max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; background: #f9fafb; }
+        .chat-message { margin-bottom: 1rem; padding: 0.75rem; border-radius: 0.5rem; }
+        .chat-message.user { background: #e0f2fe; text-align: right; margin-left: 2rem; }
+        .chat-message.bot { background: #f3f4f6; margin-right: 2rem; }
+        .spinner { display: inline-block; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <nav class="bg-blue-600 p-4 fixed w-full top-0 z-10 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="text-white text-xl font-bold">NLP App</a>
+            <div class="space-x-4">
+                <a href="/preprocessing/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Tiền xử lý</a>
+                <a href="/modeling/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Mô hình hóa</a>
+                <a href="/recommendation/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Recommendation System</a>
+                <a href="/chatbot/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Chatbot</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6 pt-24">
+        <h1 class="text-3xl font-bold text-center text-indigo-600 mb-8">Trò chuyện với AI</h1>
+        
+        <div x-data="{
+            activeTab: 'api',
+            chatHistory: [],
+            userMessage: '',
+            isLoading: false,
+            async sendMessage() {
+                if (!this.userMessage.trim()) return;
+
+                // Thêm tin nhắn người dùng vào lịch sử
+                this.chatHistory.push({ id: Date.now(), role: 'user', content: this.userMessage });
+                this.isLoading = true;
+
+                try {
+                    const url = this.activeTab === 'api' ? '/chatbot_api/' : '/chatbot_trained/';
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: this.userMessage })
+                    });
+
+                    if (!response.ok) {
+                        const text = await response.text();
+                        throw new Error(`Phản hồi không phải JSON: Status ${response.status}, Content: ${text.slice(0, 100)}...`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.chatHistory.push({ id: Date.now(), role: 'bot', content: data.response });
+                    } else {
+                        this.chatHistory.push({ id: Date.now(), role: 'bot', content: `Lỗi: ${data.error}` });
+                    }
+                } catch (error) {
+                    this.chatHistory.push({ id: Date.now(), role: 'bot', content: `Lỗi: ${error.message}` });
+                }
+
+                this.userMessage = '';
+                this.isLoading = false;
+
+                // Cuộn xuống cuối chat
+                this.$nextTick(() => {
+                    const chatContainer = this.$refs.chatContainer;
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                });
+            },
+            clearChat() {
+                this.chatHistory = [];
+            }
+        }" class="bg-white rounded-lg shadow-lg p-6">
+            <!-- Tabs -->
+            <div class="flex border-b mb-6">
+                <button @click="activeTab = 'api'" 
+                        :class="activeTab === 'api' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-2 font-medium">Chatbot API</button>
+                <button @click="activeTab = 'custom'" 
+                        :class="activeTab === 'custom' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-2 font-medium">Chatbot Tự Train</button>
+            </div>
+
+            <!-- Tab Content: Chatbot API -->
+            <div x-show="activeTab === 'api'">
+                <h2 class="text-xl font-semibold mb-4">Chatbot Sử dụng API</h2>
+                <div class="chat-container" x-ref="chatContainer">
+                    <template x-for="message in chatHistory" :key="message.id">
+                        <div :class="message.role === 'user' ? 'chat-message user' : 'chat-message bot'">
+                            <strong x-text="message.role === 'user' ? 'Bạn:' : 'AI:'"></strong>
+                            <span x-text="message.content"></span>
+                        </div>
+                    </template>
+                </div>
+                <div class="mt-4 flex items-center space-x-2">
+                    <input type="text" x-model="userMessage" @keyup.enter="sendMessage" placeholder="Nhập tin nhắn..." class="flex-1 border-gray-300 rounded-md shadow-sm p-2">
+                    <button @click="sendMessage" :disabled="isLoading" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center">
+                        <span x-show="!isLoading">Gửi</span>
+                        <span x-show="isLoading" class="spinner"></span>
+                    </button>
+                    <button @click="clearChat" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Xóa Lịch Sử</button>
+                </div>
+            </div>
+
+            <!-- Tab Content: Chatbot Tự Train -->
+            <div x-show="activeTab === 'custom'">
+                <h2 class="text-xl font-semibold mb-4">Chatbot Tự Train từ Dataset</h2>
+                <div class="chat-container" x-ref="chatContainer">
+                    <template x-for="message in chatHistory" :key="message.id">
+                        <div :class="message.role === 'user' ? 'chat-message user' : 'chat-message bot'">
+                            <strong x-text="message.role === 'user' ? 'Bạn:' : 'AI:'"></strong>
+                            <span x-text="message.content"></span>
+                        </div>
+                    </template>
+                </div>
+                <div class="mt-4 flex items-center space-x-2">
+                    <input type="text" x-model="userMessage" @keyup.enter="sendMessage" placeholder="Nhập tin nhắn..." class="flex-1 border-gray-300 rounded-md shadow-sm p-2">
+                    <button @click="sendMessage" :disabled="isLoading" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center">
+                        <span x-show="!isLoading">Gửi</span>
+                        <span x-show="isLoading" class="spinner"></span>
+                    </button>
+                    <button @click="clearChat" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Xóa Lịch Sử</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-gray-200 p-4 mt-8">
+        <p class="text-center text-gray-600">© 2025 Nguyễn Trung Hiếu - Ứng dụng NLP</p>
+    </footer>
+</body>
+</html>

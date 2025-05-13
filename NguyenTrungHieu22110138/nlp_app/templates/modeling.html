@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NguyenTrungHieu22110138 - Mô hình hóa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        .stContainer { border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; background: #f9fafb; }
+        .spinner { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    {% csrf_token %}
+    <nav class="bg-blue-600 p-4 fixed w-full top-0 z-10 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="text-white text-xl font-bold">NLP App</a>
+            <div class="space-x-4">
+                <a href="/preprocessing/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Tiền xử lý</a>
+                <a href="/modeling/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Mô hình hóa</a>
+                <a href="/recommendation/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Recommendation System</a>
+                <a href="/chatbot/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Chatbot</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mx-auto p-6 pt-20">
+        <h1 class="text-3xl font-bold text-center mb-6">Mô hình hóa</h1>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-2xl font-semibold mb-4">5️⃣ Phân loại văn bản</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block mb-2 font-medium">Chọn phương pháp vector hóa:</label>
+                    <select id="vectorization-method" class="w-full p-2 border rounded">
+                        <option value="One-Hot Encoding">One-Hot Encoding</option>
+                        <option value="Bag of Words">Bag of Words</option>
+                        <option value="TF-IDF">TF-IDF</option>
+                        <option value="Bag of N-Gram">Bag of N-Gram</option>
+                        <option value="Word2Vec">Word2Vec</option>
+                        <option value="CBOW">CBOW</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">Chọn mô hình phân loại:</label>
+                    <select id="model-type" class="w-full p-2 border rounded">
+                        <option value="Naive Bayes">Naive Bayes</option>
+                        <option value="SVM">SVM</option>
+                        <option value="Logistic Regression">Logistic Regression</option>
+                        <option value="KNN">KNN</option>
+                        <option value="Decision Tree">Decision Tree</option>
+                        <option value="Random Forest">Random Forest</option>
+                        <option value="Gradient Boosting">Gradient Boosting</option>
+                        <option value="XGBoost">XGBoost</option>
+                        <option value="AdaBoost">AdaBoost</option>
+                    </select>
+                </div>
+            </div>
+            <div id="knn-params" class="mb-4 hidden">
+                <label class="block mb-2 font-medium">Chọn số láng giềng (K):</label>
+                <input id="knn-k" type="number" min="1" max="20" value="5" step="2" class="w-full p-2 border rounded">
+            </div>
+            <div id="dt-params" class="mb-4 hidden">
+                <label class="block mb-2 font-medium">Chọn độ sâu tối đa (max_depth):</label>
+                <input id="dt-depth" type="number" min="1" max="50" value="10" class="w-full p-2 border rounded">
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2 font-medium">Nhập tên cột nhãn:</label>
+                <input id="label-column" type="text" class="w-full p-2 border rounded" placeholder="Tên cột nhãn (ví dụ: sentiment)">
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2 font-medium">Tải lên tệp CSV:</label>
+                <input id="csv-upload" type="file" accept=".csv" class="w-full p-2 border rounded">
+            </div>
+            <button id="train-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+                <span>Huấn luyện</span>
+                <span id="train-spinner" class="spinner ml-2"></span>
+            </button>
+            <div id="train-result" class="mt-4"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mt-6">
+            <h2 class="text-2xl font-semibold mb-4">📊 So sánh các mô hình</h2>
+            <canvas id="accuracy-chart" class="mb-4"></canvas>
+            <div id="confusion-matrices" class="grid grid-cols-3 gap-4"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mt-6">
+            <h2 class="text-2xl font-semibold mb-4">📝 Kiểm tra mô hình</h2>
+            <textarea id="predict-input" class="w-full p-2 border rounded mb-4" placeholder="Nhập văn bản để dự đoán..."></textarea>
+            <button id="predict-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+                <span>Dự đoán</span>
+                <span id="predict-spinner" class="spinner ml-2"></span>
+            </button>
+            <div id="predict-result" class="mt-4"></div>
+        </div>
+    </div>
+
+    <script>
+        // Lấy CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Hiển thị tham số cho KNN và Decision Tree
+        document.getElementById('model-type').addEventListener('change', (e) => {
+            document.getElementById('knn-params').classList.add('hidden');
+            document.getElementById('dt-params').classList.add('hidden');
+            if (e.target.value === 'KNN') {
+                document.getElementById('knn-params').classList.remove('hidden');
+            } else if (e.target.value === 'Decision Tree') {
+                document.getElementById('dt-params').classList.remove('hidden');
+            }
+        });
+
+        // Huấn luyện mô hình
+        document.getElementById('train-btn').addEventListener('click', () => {
+            const spinner = document.getElementById('train-spinner');
+            spinner.style.display = 'inline-block';
+
+            const formData = new FormData();
+            formData.append('vectorization_method', document.getElementById('vectorization-method').value);
+            formData.append('model_type', document.getElementById('model-type').value);
+            formData.append('label_column', document.getElementById('label-column').value);
+            formData.append('csv_file', document.getElementById('csv-upload').files[0]);
+            if (document.getElementById('model-type').value === 'KNN') {
+                formData.append('knn_k', document.getElementById('knn-k').value);
+            } else if (document.getElementById('model-type').value === 'Decision Tree') {
+                formData.append('dt_depth', document.getElementById('dt-depth').value);
+            }
+
+            fetch('/modeling/train/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                const resultDiv = document.getElementById('train-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-500">${data.success}</div>
+                        <div class="mt-2">🎯 <strong>Độ chính xác:</strong> ${data.accuracy.toFixed(4)}</div>
+                        <div class="mt-2">📊 <strong>Báo cáo phân loại:</strong></div>
+                        <pre class="stContainer">${data.report}</pre>
+                        <div class="mt-2">📈 <strong>Ma trận nhầm lẫn:</strong></div>
+                        <img src="data:image/png;base64,${data.matrix_image}" class="max-w-full h-auto">`;
+
+                    // Cập nhật biểu đồ so sánh
+                    updateComparisonChart(data.model_results);
+                    updateConfusionMatrices(data.model_results);
+                }
+            });
+        });
+
+        // Dự đoán văn bản
+        document.getElementById('predict-btn').addEventListener('click', () => {
+            const spinner = document.getElementById('predict-spinner');
+            spinner.style.display = 'inline-block';
+
+            const formData = new FormData();
+            formData.append('text_input', document.getElementById('predict-input').value);
+
+            fetch('/modeling/predict/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                const resultDiv = document.getElementById('predict-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-500">${data.success}</div>
+                        <div class="mt-2">🔮 <strong>Dự đoán cảm xúc:</strong> ${data.prediction}</div>`;
+                }
+            });
+        });
+
+        // Cập nhật biểu đồ so sánh
+        let chartInstance = null;
+        function updateComparisonChart(modelResults) {
+            const ctx = document.getElementById('accuracy-chart').getContext('2d');
+            const accuracies = Object.values(modelResults).map(result => result.accuracy);
+            const modelNames = Object.keys(modelResults);
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: modelNames,
+                    datasets: [{
+                        label: 'Độ chính xác',
+                        data: accuracies,
+                        backgroundColor: 'rgba(135, 206, 235, 0.6)',
+                        borderColor: 'rgba(135, 206, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, max: 1 },
+                        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'So sánh độ chính xác của các mô hình' }
+                    }
+                }
+            });
+        }
+
+        // Cập nhật ma trận nhầm lẫn
+        function updateConfusionMatrices(modelResults) {
+            const container = document.getElementById('confusion-matrices');
+            container.innerHTML = '';
+            Object.entries(modelResults).forEach(([key, result]) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <div class="text-center font-medium">${key}</div>
+                    <img src="data:image/png;base64,${result.matrix_image}" class="max-w-full h-auto">
+                    <div class="text-center">Độ chính xác: ${result.accuracy.toFixed(4)}</div>`;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>

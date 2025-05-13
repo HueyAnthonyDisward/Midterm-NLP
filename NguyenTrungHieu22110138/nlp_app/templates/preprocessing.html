@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NguyenTrungHieu22110138 - Tiền xử lý</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        .stContainer { border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; background: #f9fafb; }
+        .spinner { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    {% csrf_token %}
+    <nav class="bg-blue-600 p-4 fixed w-full top-0 z-10 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="text-white text-xl font-bold">NLP App</a>
+            <div class="space-x-4">
+                <a href="/preprocessing/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Tiền xử lý</a>
+                <a href="/modeling/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Mô hình hóa</a>
+                <a href="/recommendation/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Recommendation System</a>
+                <a href="/chatbot/" class="text-white hover:bg-blue-700 px-3 py-2 rounded">Chatbot</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mx-auto p-6 pt-20">
+        <h1 class="text-3xl font-bold text-center mb-6">Tiền xử lý Dữ liệu</h1>
+        <div class="tabs flex justify-center mb-4">
+            <button class="tab-btn px-4 py-2 mx-1 bg-blue-500 text-white rounded hover:bg-blue-600" data-tab="crawl">Cào dữ liệu</button>
+            <button class="tab-btn px-4 py-2 mx-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" data-tab="augment">Tăng cường dữ liệu</button>
+            <button class="tab-btn px-4 py-2 mx-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" data-tab="preprocess">Tiền xử lý</button>
+            <button class="tab-btn px-4 py-2 mx-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" data-tab="model">Mô hình hóa</button>
+        </div>
+
+        <!-- Cào dữ liệu -->
+        <div id="crawl" class="tab-content">
+            <h2 class="text-2xl font-semibold mb-4">1️⃣ Cào dữ liệu</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="mb-4">
+                    <label class="block mb-2 font-medium">Chọn nguồn dữ liệu:</label>
+                    <select id="crawl-option" class="w-full p-2 border rounded">
+                        <option value="web">Cào từ web</option>
+                        <option value="text">Nhập văn bản</option>
+                        <option value="txt">Tải file TXT</option>
+                        <option value="json">Tải file JSON</option>
+                        <option value="csv">Tải file CSV</option>
+                    </select>
+                </div>
+                <div id="crawl-web" class="crawl-input">
+                    <input id="url" type="text" class="w-full p-2 border rounded mb-2" placeholder="Nhập URL hợp lệ...">
+                </div>
+                <div id="crawl-text" class="crawl-input hidden">
+                    <textarea id="text-input" class="w-full p-2 border rounded mb-2" placeholder="Nhập văn bản của bạn..."></textarea>
+                </div>
+                <div id="crawl-file" class="crawl-input hidden">
+                    <input id="file-upload" type="file" class="w-full p-2 border rounded mb-2">
+                </div>
+                <button id="crawl-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+                    <span>Cào dữ liệu</span>
+                    <span id="crawl-spinner" class="spinner ml-2"></span>
+                </button>
+                <button id="crawl-save" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mt-2 hidden">Lưu dữ liệu</button>
+                <div id="crawl-result" class="mt-4"></div>
+            </div>
+        </div>
+
+        <!-- Tăng cường dữ liệu -->
+        <div id="augment" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold mb-4">2️⃣ Tăng cường dữ liệu</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="mb-4">
+                    <label class="block mb-2 font-medium">Dữ liệu có nhãn?</label>
+                    <input id="is-labeled" type="checkbox" class="mr-2">
+                    <span>(Dữ liệu dạng: text hoặc CSV/JSON với cột nhãn)</span>
+                </div>
+                <div id="label-column" class="mb-4 hidden">
+                    <label class="block mb-2 font-medium">Nhập tên cột nhãn:</label>
+                    <input id="label-column-name" type="text" class="w-full p-2 border rounded" placeholder="Tên cột nhãn...">
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 font-medium">Chọn phương pháp tăng cường:</label>
+                    <select id="augment-method" class="w-full p-2 border rounded">
+                        <option value="Thay thế từ đồng nghĩa">Thay thế từ đồng nghĩa</option>
+                        <option value="Chèn từ ngẫu nhiên">Chèn từ ngẫu nhiên</option>
+                        <option value="Đổi chỗ từ">Đổi chỗ từ</option>
+                        <option value="Xóa từ ngẫu nhiên">Xóa từ ngẫu nhiên</option>
+                    </select>
+                </div>
+                <button id="augment-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+                    <span>Tăng cường dữ liệu</span>
+                    <span id="augment-spinner" class="spinner ml-2"></span>
+                </button>
+                <div id="augment-result" class="mt-4"></div>
+                <button id="augment-save" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mt-2 hidden">Lưu kết quả</button>
+            </div>
+        </div>
+
+        <!-- Tiền xử lý văn bản -->
+        <div id="preprocess" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold mb-4">3️⃣ Tiền xử lý văn bản</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="mb-4">
+                    <label class="block mb-2 font-medium">Chọn phương pháp:</label>
+                    <select id="preprocess-option" class="w-full p-2 border rounded">
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Tokenization">Tokenization</option>
+                        <option value="Stopwords Removal">Stopwords Removal</option>
+                        <option value="Lemmatization">Lemmatization</option>
+                    </select>
+                </div>
+                <button id="preprocess-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+                    <span>Xử lý</span>
+                    <span id="preprocess-spinner" class="spinner ml-2"></span>
+                </button>
+                <div id="preprocess-result" class="mt-4"></div>
+                <button id="preprocess-save" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mt-2 hidden">Lưu kết quả</button>
+            </div>
+        </div>
+
+        <!-- Mô hình hóa văn bản -->
+        <div id="model" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold mb-4">4️⃣ Mô hình hóa văn bản</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex mb-4">
+                    <div class="w-1/2 pr-2">
+                        <label class="block mb-2 font-medium">Từ bắt đầu (i):</label>
+                        <input id="model-i" type="number" min="1" class="w-full p-2 border rounded" value="1">
+                    </div>
+                    <div class="w-1/2 pl-2">
+                        <label class="block mb-2 font-medium">Từ kết thúc (j):</label>
+                        <input id="model-j" type="number" min="1" class="w-full p-2 border rounded" value="1">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 font-medium">Chọn phương pháp:</label>
+                    <select id="model-method" class="w-full p-2 border rounded">
+                        <option value="One-Hot Encoding">One-Hot Encoding</option>
+                        <option value="Bag of Words">Bag of Words</option>
+                        <option value="TF-IDF">TF-IDF</option>
+                        <option value="Bag of N-Gram">Bag of N-Gram</option>
+                        <option value="Word2Vec">Word2Vec</option>
+                        <option value="CBOW">CBOW</option>
+                        <option value="BERT">BERT</option>
+                        <option value="FastText">FastText</option>
+                    </select>
+                </div>
+                <button id="model-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+                    <span>Chuyển đổi</span>
+                    <span id="model-spinner" class="spinner ml-2"></span>
+                </button>
+                <div id="model-result" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lấy CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.replace('bg-blue-500', 'bg-gray-300'));
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.replace('text-white', 'text-gray-700'));
+                btn.classList.replace('bg-gray-300', 'bg-blue-500');
+                btn.classList.replace('text-gray-700', 'text-white');
+                
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+                document.getElementById(btn.dataset.tab).classList.remove('hidden');
+            });
+        });
+
+        // Crawl data inputs
+        document.getElementById('crawl-option').addEventListener('change', (e) => {
+            document.querySelectorAll('.crawl-input').forEach(input => input.classList.add('hidden'));
+            if (e.target.value === 'web') {
+                document.getElementById('crawl-web').classList.remove('hidden');
+            } else if (e.target.value === 'text') {
+                document.getElementById('crawl-text').classList.remove('hidden');
+            } else {
+                document.getElementById('crawl-file').classList.remove('hidden');
+                document.getElementById('file-upload').accept = e.target.value === 'json' ? '.json' : e.target.value === 'csv' ? '.csv' : '.txt';
+            }
+        });
+
+        // Crawl data
+        document.getElementById('crawl-btn').addEventListener('click', () => {
+            const option = document.getElementById('crawl-option').value;
+            const spinner = document.getElementById('crawl-spinner');
+            spinner.style.display = 'inline-block';
+            
+            const formData = new FormData();
+            formData.append('option', option);
+            if (option === 'web') {
+                formData.append('url', document.getElementById('url').value);
+            } else if (option === 'text') {
+                formData.append('text_input', document.getElementById('text-input').value);
+            } else {
+                formData.append(`file_${option}`, document.getElementById('file-upload').files[0]);
+            }
+
+            fetch('/crawl/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                const resultDiv = document.getElementById('crawl-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-500">${data.success}</div>
+                        <div class="mt-2">📄 <strong>Dữ liệu (500 ký tự đầu):</strong></div>
+                        <div class="stContainer">${data.text_data}</div>`;
+                    document.getElementById('crawl-save').classList.remove('hidden');
+                }
+            });
+        });
+
+        document.getElementById('crawl-save').addEventListener('click', () => {
+            fetch('/crawl/', {
+                method: 'POST',
+                body: new FormData(),
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('crawl-result').innerHTML = `<div class="text-green-500">Dữ liệu đã được lưu!</div>`;
+            });
+        });
+
+        // Show/hide label column input
+        document.getElementById('is-labeled').addEventListener('change', (e) => {
+            document.getElementById('label-column').classList.toggle('hidden', !e.target.checked);
+        });
+
+        // Augment data
+        document.getElementById('augment-btn').addEventListener('click', () => {
+            const spinner = document.getElementById('augment-spinner');
+            spinner.style.display = 'inline-block';
+            
+            const formData = new FormData();
+            formData.append('augment_method', document.getElementById('augment-method').value);
+            formData.append('is_labeled', document.getElementById('is-labeled').checked);
+            if (document.getElementById('is-labeled').checked) {
+                formData.append('label_column', document.getElementById('label-column-name').value);
+            }
+
+            fetch('/augment/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                const resultDiv = document.getElementById('augment-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-500">${data.success}</div>
+                        <div class="mt-2">🔹 <strong>Kết quả:</strong></div>
+                        <div class="stContainer">${data.augmented_text}</div>`;
+                    document.getElementById('augment-save').classList.remove('hidden');
+                }
+            });
+        });
+
+        document.getElementById('augment-save').addEventListener('click', () => {
+            const formData = new FormData();
+            formData.append('save', 'true');
+            fetch('/augment/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('augment-result').innerHTML = `<div class="text-green-500">${data.success}</div>`;
+            });
+        });
+
+        // Preprocess text
+        document.getElementById('preprocess-btn').addEventListener('click', () => {
+            const spinner = document.getElementById('preprocess-spinner');
+            spinner.style.display = 'inline-block';
+            
+            const formData = new FormData();
+            formData.append('option_process', document.getElementById('preprocess-option').value);
+
+            fetch('/preprocess/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                const resultDiv = document.getElementById('preprocess-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-500">${data.success}</div>
+                        <div class="mt-2">🔹 <strong>Kết quả:</strong></div>
+                        <div class="stContainer">${data.processed_text}</div>`;
+                    document.getElementById('preprocess-save').classList.remove('hidden');
+                }
+            });
+        });
+
+        document.getElementById('preprocess-save').addEventListener('click', () => {
+            const formData = new FormData();
+            formData.append('save', 'true');
+            fetch('/preprocess/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('preprocess-result').innerHTML = `<div class="text-green-500">${data.success}</div>`;
+            });
+        });
+
+        // Model text
+        document.getElementById('model-btn').addEventListener('click', () => {
+            const spinner = document.getElementById('model-spinner');
+            spinner.style.display = 'inline-block';
+            
+            const formData = new FormData();
+            formData.append('method', document.getElementById('model-method').value);
+            formData.append('i', document.getElementById('model-i').value);
+            formData.append('j', document.getElementById('model-j').value);
+
+            fetch('/model/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                const resultDiv = document.getElementById('model-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-500">${data.success}</div>
+                        <div class="mt-2">🔹 <strong>Kết quả:</strong></div>
+                        ${data.result.map(item => `<div class="stContainer">${item}</div>`).join('')}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
